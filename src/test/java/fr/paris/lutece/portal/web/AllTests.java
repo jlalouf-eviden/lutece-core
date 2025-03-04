@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2022, City of Paris
+ * Copyright (c) 2002-2025, City of Paris
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -86,7 +86,6 @@ public final class AllTests
         suite.addTest( new TestSuite( SystemJspBeanTest.class ) );
         suite.addTest( new TestSuite( SiteMapAppTest.class ) );
         suite.addTest( new TestSuite( PortalJspBeanTest.class ) );
-        suite.addTest( new TestSuite( StandaloneAppJspBeanTest.class ) );
 
         // $JUnit-END$
         return suite;

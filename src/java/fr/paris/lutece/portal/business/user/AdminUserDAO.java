@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2022, City of Paris
+ * Copyright (c) 2002-2025, City of Paris
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -202,6 +202,53 @@ public class AdminUserDAO implements IAdminUserDAO
 
         return user;
     }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+	public <T extends AdminUser> T selectUserByAccessCode(String strUserAccessCode, T user) {
+	
+    	if(user != null)
+    	{
+	    	 try ( DAOUtil daoUtil = new DAOUtil( SQL_QUERY_SELECT_USER_FROM_ACCESS_CODE ) )
+	         {
+	             daoUtil.setString( 1, strUserAccessCode );
+	             daoUtil.executeQuery( );
+	
+	             if ( daoUtil.next( ) )
+	             {
+	                 user.setUserId( daoUtil.getInt( 1 ) );
+	                 user.setAccessCode( daoUtil.getString( 2 ) );
+	                 user.setLastName( daoUtil.getString( 3 ) );
+	                 user.setFirstName( daoUtil.getString( 4 ) );
+	                 user.setEmail( daoUtil.getString( 5 ) );
+	                 user.setStatus( daoUtil.getInt( 6 ) );
+	                 user.setLocale( new Locale( daoUtil.getString( 7 ) ) );
+	                 user.setUserLevel( daoUtil.getInt( 8 ) );
+	                 user.setPasswordReset( daoUtil.getBoolean( 9 ) );
+	                 user.setAccessibilityMode( daoUtil.getBoolean( 10 ) );
+	                 user.setPasswordMaxValidDate( daoUtil.getTimestamp( 11 ) );
+	
+	                 Timestamp dateLastLogin = daoUtil.getTimestamp( 12 );
+	
+	                 if ( ( dateLastLogin != null ) && !dateLastLogin.equals( AdminUser.getDefaultDateLastLogin( ) ) )
+	                 {
+	                     user.setDateLastLogin( dateLastLogin );
+	                 }
+	             }
+	             else
+	             {
+	            	 //there is no user in database with  strUserAccessCode the user return must be null
+	            	  user= null;	 
+	             }
+	            
+	
+	         }
+    	}
+
+         return user;
+	}
 
     /**
      * {@inheritDoc}
@@ -1325,4 +1372,6 @@ public class AdminUserDAO implements IAdminUserDAO
             daoUtil.executeUpdate( );
         }
     }
+
+	
 }
