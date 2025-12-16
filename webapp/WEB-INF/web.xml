@@ -126,7 +126,11 @@
         <filter-class>fr.paris.lutece.portal.web.xss.SafeRequestFilterAdmin</filter-class>
         <init-param>
             <param-name>activateXssFilter</param-name>
-            <param-value>false</param-value>
+            <param-value>true</param-value>
+        </init-param>
+        <init-param>
+            <param-name>sanitizeFilterMode</param-name>
+            <param-value>true</param-value>
         </init-param>
         <init-param>
             <param-name>xssCharacters</param-name>
@@ -201,7 +205,18 @@
         <dispatcher>FORWARD</dispatcher>
         <dispatcher>REQUEST</dispatcher>
     </filter-mapping>
-
+  <filter-mapping>
+        <filter-name>safeRequestFilterSite</filter-name>
+        <url-pattern>/jsp/site/*</url-pattern>
+        <dispatcher>FORWARD</dispatcher>
+        <dispatcher>REQUEST</dispatcher>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>safeRequestFilterAdmin</filter-name>
+        <url-pattern>/jsp/admin/*</url-pattern>
+        <dispatcher>FORWARD</dispatcher>
+        <dispatcher>REQUEST</dispatcher>
+    </filter-mapping>
     <filter-mapping>
         <filter-name>uploadFilterSite</filter-name>
         <url-pattern>/jsp/site/*</url-pattern>
@@ -210,18 +225,6 @@
     </filter-mapping>
     <filter-mapping>
         <filter-name>uploadFilterAdmin</filter-name>
-        <url-pattern>/jsp/admin/*</url-pattern>
-        <dispatcher>FORWARD</dispatcher>
-        <dispatcher>REQUEST</dispatcher>
-    </filter-mapping>
-    <filter-mapping>
-        <filter-name>safeRequestFilterSite</filter-name>
-        <url-pattern>/jsp/site/*</url-pattern>
-        <dispatcher>FORWARD</dispatcher>
-        <dispatcher>REQUEST</dispatcher>
-    </filter-mapping>
-    <filter-mapping>
-        <filter-name>safeRequestFilterAdmin</filter-name>
         <url-pattern>/jsp/admin/*</url-pattern>
         <dispatcher>FORWARD</dispatcher>
         <dispatcher>REQUEST</dispatcher>

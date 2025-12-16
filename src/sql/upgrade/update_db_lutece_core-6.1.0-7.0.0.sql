@@ -1,3 +1,6 @@
+-- liquibase formatted sql
+-- changeset core:update_db_lutece_core-6.1.0-7.0.0.sql
+-- preconditions onFail:MARK_RAN onError:WARN
 
 -- removed or updated entries
 DELETE FROM core_admin_dashboard WHERE dashboard_name = 'editorAdminDashboardComponent';
@@ -38,7 +41,7 @@ INSERT INTO core_admin_right VALUES ('CORE_EDITORS_MANAGEMENT', 'portal.admindas
 INSERT INTO core_user_right VALUES ('CORE_TEMPLATES_AUTO_INCLUDES_MANAGEMENT', 1);
 INSERT INTO core_user_right VALUES ('CORE_EDITORS_MANAGEMENT', 1);
 
-INSERT INTO core_text_editor VALUES ( 'tinymce', 'portal.admindashboard.editors.labelBackTinyMCE', 1 );
+INSERT INTO core_text_editor VALUES ( 'tinymce', 'portal.globalmanagement.editors.labelBackTinyMCE', 1 );
 INSERT INTO core_text_editor VALUES ( '', 'portal.admindashboard.editors.labelBackNoEditor', 1 );
 INSERT INTO core_text_editor VALUES ( '', 'portal.admindashboard.editors.labelFrontNoEditor', 0 );
 INSERT INTO core_text_editor VALUES ( 'markitupbbcode', 'portal.admindashboard.editors.labelFrontMarkitupBBCode', 0 );

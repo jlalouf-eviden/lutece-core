@@ -11,7 +11,6 @@
         </@tform>
         </@pageHeader>
         <@tform action='jsp/admin/DoModifyProperties.jsp'>
-        <@input type='hidden' name='token' value='${token}' />
         <@tabs>
             <@tabList>
             <#list groups_list as group>
@@ -20,17 +19,13 @@
                 <@tabLink active=tabactive href='#group-${index}' title='${group.name}' />
             </#list>
             </@tabList>
-            <@tabContent>
+            <@tabContent class='pt-0'>
             <#list groups_list as group>
                 <#assign index = group?index>
                 <#if index == 0 ><#assign tabactive = true><#else><#assign tabactive = false></#if>
                 <@tabPanel active=tabactive id='group-${index}'>
                 
-                <#-- <@row>
-                    <@columns class='d-flex justify-content-end'>
-                        <@button  type='submit' buttonIcon='device-floppy' title='#i18n{portal.system.modify_properties.buttonLabel}' />
-                    </@columns>
-                </@row> -->
+                <@input type='hidden' name='token' value='${token}' />
                 <@row class='d-block properties-container'>
                     <#assign groups = group.localizedDataList?map( prop -> prop.group )>
                     <#assign groupList = []>
@@ -42,11 +37,12 @@
                     <#list groupList?sort as groupCol>
                     <@columns class='col-property' params='data-prop="${groupCol}"'> 
                     <#assign groupName=''>
+                    <#assign helpText=''>
                     <#list group.localizedDataList?filter( groupItem -> groupItem.group = groupCol ) as groupItem>
                             <#if groupName=''>
                             <#assign prefix=groupItem.key?keep_before(".site_property")  >
                             <#assign groupName>#i18n{${prefix}.site_property.${groupCol}.group.title}</#assign>
-                            <h3>${groupName}</h3>
+                            <h3>${groupName} </h3>
                             </#if>
                             <#assign labelText=groupItem.label>
                             <#if groupItem.key?ends_with( ".checkbox" )><#assign labelText=''></#if>
@@ -69,7 +65,8 @@
                                         <@inputGroup class='color-wrapper-input'>
                                             <@input type='text' class='color-input' name=groupItem.key id=groupItem.key value=groupItem.value?html />
                                             <@inputGroupItem>
-                                                <@input type='color' class='color-input' name='color-input' value=groupItem.value?html />
+                                                <!-- <@input type='color' class='color-input' name='color-input' value=groupItem.value?html /> -->
+                                               <input type="color" class="color-input" name="color-input" value="${groupItem.value?html}" colorspace="display-p3" alpha>
                                             </@inputGroupItem>
                                         </@inputGroup>
                                     <#else>
@@ -82,25 +79,24 @@
                         </@columns>
                     </#list>
                     </@row>
-                    </@tabPanel>
-                </#list>
-			</@tabContent>
-		</@tabs>
-        <@row class='row bg-dark p-2 position-fixed bottom-0 w-100'>
-            <@columns class='d-flex justify-content-center'>
-                <@button class='btn-lg' type='submit' buttonIcon='device-floppy' title='#i18n{portal.system.modify_properties.buttonLabel}' />
+                </@tabPanel>
+            </#list>
+            </@tabContent>
+        </@tabs>
+        <@row class='position-fixed bottom-0 end-0 w-100 zh-5'>
+            <@columns class='d-flex justify-content-center align-items-center col-12' params='style="background-color:rgba(255,255,255,.8)"'>
+                <@button class='mt-3' type='submit' buttonIcon='device-floppy' title='#i18n{portal.system.modify_properties.buttonLabel}' />
             </@columns>
         </@row>
-        </@tform>
+    </@tform>
     </@pageColumn>
 </@pageContainer>
 <#include "/admin/util/editor/editor.html" />
 <@initEditor />
 <style>
-.row.bg-dark{
-    --tblr-bg-opacity: .5;
+.zh-5 {
+    height: 5rem;
 }
-
 .color-input{
     width: 25px;
     padding: 0;
@@ -150,5 +146,43 @@ window.addEventListener( "load", function(){
             colorInput.value = colorValue.value;
         });
     });
+
+    // Tab management with sessionStorage
+    const tabLinks = document.querySelectorAll('[data-bs-toggle="tab"]');
+    const tabPanels = document.querySelectorAll('[role="tabpanel"]');
+    const storageKey = "lutece-admin-prop-tab";
+
+    // Restore last active tab on page load
+    const savedTabId = sessionStorage.getItem(storageKey);
+    if (savedTabId) {
+        // Deactivate all tabs and panels
+        tabLinks.forEach(link => {
+            link.classList.remove('active');
+            link.setAttribute('aria-selected', 'false');
+        });
+        tabPanels.forEach(panel => {
+            panel.classList.remove('active', 'show');
+        });
+
+        // Activate the saved tab
+        const savedTabLink = <#noparse>document.querySelector(`[href="${savedTabId}"]`);</#noparse>
+        const savedTabPanel = document.querySelector(savedTabId);
+        
+        if (savedTabLink && savedTabPanel) {
+            savedTabLink.classList.add('active');
+            savedTabLink.setAttribute('aria-selected', 'true');
+            savedTabPanel.classList.add('active', 'show');
+        }
+    }
+
+    // Save tab selection on click
+    tabLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            const targetId = this.getAttribute('href');
+            sessionStorage.setItem(storageKey, targetId);
+        });
+    });
+
 });
 </script>
+<@overlay />

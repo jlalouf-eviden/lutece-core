@@ -269,6 +269,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
     private static final String JSP_MANAGE_USER_ROLES = "ManageUserRoles.jsp";
     private static final String JSP_MANAGE_USER = "ManageUsers.jsp";
     private static final String JSP_MANAGE_USER_WORKGROUPS = "ManageUserWorkgroups.jsp";
+    private static final String JSP_URL_MANAGE_USERS = "jsp/admin/user/ManageUsers.jsp";
     private static final String JSP_URL_REMOVE_USER = "jsp/admin/user/DoRemoveUser.jsp";
     private static final String JSP_URL_CREATE_USER = "jsp/admin/user/CreateUser.jsp";
     private static final String JSP_URL_IMPORT_USER = "jsp/admin/user/ImportUser.jsp";
@@ -540,13 +541,13 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         if ( ( strAccessCode == null ) || ( strAccessCode.equals( "" ) ) )
         {
-            return AdminMessageService.getMessageUrl( request, Messages.MANDATORY_FIELDS, AdminMessage.TYPE_STOP );
+            return AdminMessageService.getMessageUrl( request, Messages.MANDATORY_FIELDS, JSP_URL_IMPORT_USER, AdminMessage.TYPE_STOP );
         }
 
         // check that access code is not in use
         if ( AdminUserHome.checkAccessCodeAlreadyInUse( strAccessCode ) != -1 )
         {
-            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_ACCESS_CODE_ALREADY_USED, AdminMessage.TYPE_STOP );
+            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_ACCESS_CODE_ALREADY_USED, JSP_URL_IMPORT_USER, AdminMessage.TYPE_STOP );
         }
 
         return AppPathService.getBaseUrl( request ) + JSP_URL_CREATE_USER + "?" + PARAMETER_ACCESS_CODE + "=" + strAccessCode;
@@ -874,10 +875,12 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         if ( isUserAuthorizedToChangeUserLevel( currentUser, user ) )
         {
-            for (Level levelItem : LevelHome.getLevelsList( )) {
-                filteredLevels.add(levelItem.getReferenceItem());
-            };
-            filteredLevels.removeIf(levelItem -> levelItem.getCode().equals("0"));
+            for ( Level levelItem : LevelHome.getLevelsList( ) )
+            {
+                filteredLevels.add( levelItem.getReferenceItem( ) );
+            }
+            ;
+            filteredLevels.removeIf( levelItem -> levelItem.getCode( ).equals( "0" ) );
         }
 
         // ITEM NAVIGATION
@@ -1385,15 +1388,14 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
         {
             response.setContentType( CONSTANT_MIME_TYPE_CSV );
         }
+        else if ( CONSTANT_EXTENSION_XML_FILE.contains( xslExport.getExtension( ) ) )
+        {
+            response.setContentType( CONSTANT_MIME_TYPE_XML );
+        }
         else
-            if ( CONSTANT_EXTENSION_XML_FILE.contains( xslExport.getExtension( ) ) )
-            {
-                response.setContentType( CONSTANT_MIME_TYPE_XML );
-            }
-            else
-            {
-                response.setContentType( CONSTANT_MIME_TYPE_OCTETSTREAM );
-            }
+        {
+            response.setContentType( CONSTANT_MIME_TYPE_OCTETSTREAM );
+        }
 
         String strFileName = CONSTANT_EXPORT_USERS_FILE_NAME + CONSTANT_POINT + xslExport.getExtension( );
         response.setHeader( CONSTANT_ATTACHEMENT_DISPOSITION, CONSTANT_ATTACHEMENT_FILE_NAME + strFileName + CONSTANT_QUOTE );
@@ -1423,7 +1425,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         if ( user == null )
         {
-            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_USER_ERROR_SESSION, AdminMessage.TYPE_ERROR );
+            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_USER_ERROR_SESSION, JSP_URL_MANAGE_USERS, AdminMessage.TYPE_ERROR );
         }
 
         AdminUser currentUser = AdminUserService.getAdminUser( request );
@@ -1440,7 +1442,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_CONFIRM_REMOVE, new Object [ ] {
                 user.getFirstName( ), user.getLastName( ), user.getAccessCode( )
-        }, null, strUrlRemove, null, AdminMessage.TYPE_CONFIRMATION, parameters );
+        }, null, strUrlRemove, null, AdminMessage.TYPE_CONFIRMATION, parameters, JSP_URL_MANAGE_USERS );
     }
 
     /**
@@ -1460,7 +1462,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         if ( user == null )
         {
-            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_USER_ERROR_SESSION, AdminMessage.TYPE_ERROR );
+            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_USER_ERROR_SESSION, JSP_URL_MANAGE_USERS, AdminMessage.TYPE_ERROR );
         }
         if ( !SecurityTokenService.getInstance( ).validate( request, JSP_URL_REMOVE_USER ) )
         {
@@ -1476,14 +1478,29 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         String strRemovedUserAccessCode = user.getAccessCode( );
 
-        AdminUserFieldService.doRemoveUserFields( user, request, getLocale( ) );
-        AdminUserHome.removeAllRightsForUser( nUserId );
-        AdminUserHome.removeAllRolesForUser( nUserId );
-        AdminUserHome.removeAllPasswordHistoryForUser( nUserId );
-        AdminUserHome.remove( nUserId );
+        // Only level 0 users can physically delete a user.
+        if( currentUser.isAdmin( ) )
+        {
+            AdminUserFieldService.doRemoveUserFields( user, request, getLocale( ) );
+            AdminUserHome.removeAllRightsForUser( nUserId );
+            AdminUserHome.removeAllRolesForUser( nUserId );
+            AdminUserHome.removeAllPasswordHistoryForUser( nUserId );
+            AdminUserHome.remove( nUserId );
 
-        AccessLogService.getInstance( ).info( AccessLoggerConstants.EVENT_TYPE_RIGHTS, CONSTANT_REMOVE_ADMINUSER, currentUser,
-                strUserId + " : " + strRemovedUserAccessCode, CONSTANT_BO );
+            AccessLogService.getInstance( ).info( AccessLoggerConstants.EVENT_TYPE_RIGHTS, CONSTANT_REMOVE_ADMINUSER, currentUser,
+                    strUserId + " : " + strRemovedUserAccessCode, CONSTANT_BO );
+        }
+        else
+        {
+            if (user.isStatusActive())
+            {
+                user.setStatus( AdminUser.NOT_ACTIVE_CODE );
+                AdminUserHome.update( user );
+
+                AccessLogService.getInstance( ).info( AccessLoggerConstants.EVENT_TYPE_RIGHTS, CONSTANT_MODIFY_ADMINUSER, currentUser,
+                        strUserId + " : " + strRemovedUserAccessCode, CONSTANT_BO );
+            }
+        }
 
         return JSP_MANAGE_USER;
     }
@@ -2426,7 +2443,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         if ( !StringUtils.isNumeric( strAdminUserId ) || strAdminUserId.isEmpty( ) )
         {
-            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_NO_ADMIN_USER_SELECTED, AdminMessage.TYPE_STOP );
+            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_NO_ADMIN_USER_SELECTED, JSP_URL_MANAGE_USERS, AdminMessage.TYPE_STOP );
         }
 
         int nUserId = Integer.parseInt( strAdminUserId );
@@ -2434,7 +2451,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         if ( user == null )
         {
-            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_USER_ERROR_SESSION, AdminMessage.TYPE_ERROR );
+            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_USER_ERROR_SESSION, JSP_URL_MANAGE_USERS, AdminMessage.TYPE_ERROR );
         }
 
         String strUrl = JSP_URL_ANONYMIZE_ADMIN_USER;
@@ -2444,7 +2461,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_CONFIRM_ANONYMIZE_USER, new Object [ ] {
                 user.getFirstName( ), user.getLastName( ), user.getAccessCode( )
-        }, null, strUrl, null, AdminMessage.TYPE_CONFIRMATION, parameters );
+        }, null, strUrl, null, AdminMessage.TYPE_CONFIRMATION, parameters, JSP_URL_MANAGE_USERS );
     }
 
     /**
@@ -2462,7 +2479,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         if ( !StringUtils.isNumeric( strAdminUserId ) || strAdminUserId.isEmpty( ) )
         {
-            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_NO_ADMIN_USER_SELECTED, AdminMessage.TYPE_STOP );
+            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_NO_ADMIN_USER_SELECTED, JSP_URL_MANAGE_USERS, AdminMessage.TYPE_STOP );
         }
 
         int nUserId = Integer.parseInt( strAdminUserId );
@@ -2470,7 +2487,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
 
         if ( user == null )
         {
-            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_USER_ERROR_SESSION, AdminMessage.TYPE_ERROR );
+            return AdminMessageService.getMessageUrl( request, PROPERTY_MESSAGE_USER_ERROR_SESSION, JSP_URL_MANAGE_USERS, AdminMessage.TYPE_ERROR );
         }
         if ( !SecurityTokenService.getInstance( ).validate( request, JSP_URL_ANONYMIZE_ADMIN_USER ) )
         {
@@ -2543,38 +2560,34 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
             strBodyKey = PARAMETER_FIRST_ALERT_MAIL;
             strTitle = PROPERTY_FIRST_EMAIL;
         }
-        else
-            if ( CONSTANT_EMAIL_TYPE_OTHER.equalsIgnoreCase( strEmailType ) )
-            {
-                strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_OTHER_ALERT_MAIL_SENDER;
-                strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_OTHER_ALERT_MAIL_SUBJECT;
-                strBodyKey = PARAMETER_OTHER_ALERT_MAIL;
-                strTitle = PROPERTY_OTHER_EMAIL;
-            }
-            else
-                if ( CONSTANT_EMAIL_TYPE_EXPIRED.equalsIgnoreCase( strEmailType ) )
-                {
-                    strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_EXPIRED_ALERT_MAIL_SENDER;
-                    strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_EXPIRED_ALERT_MAIL_SUBJECT;
-                    strBodyKey = PARAMETER_EXPIRATION_MAIL;
-                    strTitle = PROPERTY_ACCOUNT_DEACTIVATES_EMAIL;
-                }
-                else
-                    if ( CONSTANT_EMAIL_TYPE_REACTIVATED.equalsIgnoreCase( strEmailType ) )
-                    {
-                        strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_REACTIVATED_ALERT_MAIL_SENDER;
-                        strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_REACTIVATED_ALERT_MAIL_SUBJECT;
-                        strBodyKey = PARAMETER_ACCOUNT_REACTIVATED;
-                        strTitle = PROPERTY_ACCOUNT_UPDATED_EMAIL;
-                    }
-                    else
-                        if ( CONSTANT_EMAIL_PASSWORD_EXPIRED.equalsIgnoreCase( strEmailType ) )
-                        {
-                            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_PASSWORD_EXPIRED_MAIL_SENDER;
-                            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_PASSWORD_EXPIRED_MAIL_SUBJECT;
-                            strBodyKey = PARAMETER_NOTIFY_PASSWORD_EXPIRED;
-                            strTitle = PROPERTY_NOTIFY_PASSWORD_EXPIRED;
-                        }
+        else if ( CONSTANT_EMAIL_TYPE_OTHER.equalsIgnoreCase( strEmailType ) )
+        {
+            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_OTHER_ALERT_MAIL_SENDER;
+            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_OTHER_ALERT_MAIL_SUBJECT;
+            strBodyKey = PARAMETER_OTHER_ALERT_MAIL;
+            strTitle = PROPERTY_OTHER_EMAIL;
+        }
+        else if ( CONSTANT_EMAIL_TYPE_EXPIRED.equalsIgnoreCase( strEmailType ) )
+        {
+            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_EXPIRED_ALERT_MAIL_SENDER;
+            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_EXPIRED_ALERT_MAIL_SUBJECT;
+            strBodyKey = PARAMETER_EXPIRATION_MAIL;
+            strTitle = PROPERTY_ACCOUNT_DEACTIVATES_EMAIL;
+        }
+        else if ( CONSTANT_EMAIL_TYPE_REACTIVATED.equalsIgnoreCase( strEmailType ) )
+        {
+            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_REACTIVATED_ALERT_MAIL_SENDER;
+            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_REACTIVATED_ALERT_MAIL_SUBJECT;
+            strBodyKey = PARAMETER_ACCOUNT_REACTIVATED;
+            strTitle = PROPERTY_ACCOUNT_UPDATED_EMAIL;
+        }
+        else if ( CONSTANT_EMAIL_PASSWORD_EXPIRED.equalsIgnoreCase( strEmailType ) )
+        {
+            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_PASSWORD_EXPIRED_MAIL_SENDER;
+            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_PASSWORD_EXPIRED_MAIL_SUBJECT;
+            strBodyKey = PARAMETER_NOTIFY_PASSWORD_EXPIRED;
+            strTitle = PROPERTY_NOTIFY_PASSWORD_EXPIRED;
+        }
 
         String defaultUserParameter = DefaultUserParameterHome.findByKey( strSenderKey );
         String strSender = ( defaultUserParameter == null ) ? StringUtils.EMPTY : defaultUserParameter;
@@ -2589,7 +2602,7 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
         model.put( PARAMETER_EMAIL_TYPE, strEmailType );
         model.put( MARK_EMAIL_SENDER, strSender );
         model.put( MARK_EMAIL_SUBJECT, strSubject );
-        model.put( MARK_EMAIL_BODY, DatabaseTemplateService.getTemplateFromKey( strBodyKey ) );
+        model.put( MARK_EMAIL_BODY, DatabaseTemplateService.getTemplateFromKey( strBodyKey, true ) );
         model.put( MARK_EMAIL_LABEL, strTitle );
         model.put( MARK_WEBAPP_URL, AppPathService.getBaseUrl( request ) );
         model.put( MARK_LOCALE, getLocale( ) );
@@ -2628,34 +2641,30 @@ public class AdminUserJspBean extends AdminFeaturesPageJspBean
             strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_FIRST_ALERT_MAIL_SUBJECT;
             strBodyKey = PARAMETER_FIRST_ALERT_MAIL;
         }
-        else
-            if ( CONSTANT_EMAIL_TYPE_OTHER.equalsIgnoreCase( strEmailType ) )
-            {
-                strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_OTHER_ALERT_MAIL_SENDER;
-                strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_OTHER_ALERT_MAIL_SUBJECT;
-                strBodyKey = PARAMETER_OTHER_ALERT_MAIL;
-            }
-            else
-                if ( CONSTANT_EMAIL_TYPE_EXPIRED.equalsIgnoreCase( strEmailType ) )
-                {
-                    strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_EXPIRED_ALERT_MAIL_SENDER;
-                    strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_EXPIRED_ALERT_MAIL_SUBJECT;
-                    strBodyKey = PARAMETER_EXPIRATION_MAIL;
-                }
-                else
-                    if ( CONSTANT_EMAIL_TYPE_REACTIVATED.equalsIgnoreCase( strEmailType ) )
-                    {
-                        strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_REACTIVATED_ALERT_MAIL_SENDER;
-                        strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_REACTIVATED_ALERT_MAIL_SUBJECT;
-                        strBodyKey = PARAMETER_ACCOUNT_REACTIVATED;
-                    }
-                    else
-                        if ( CONSTANT_EMAIL_PASSWORD_EXPIRED.equalsIgnoreCase( strEmailType ) )
-                        {
-                            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_PASSWORD_EXPIRED_MAIL_SENDER;
-                            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_PASSWORD_EXPIRED_MAIL_SUBJECT;
-                            strBodyKey = PARAMETER_NOTIFY_PASSWORD_EXPIRED;
-                        }
+        else if ( CONSTANT_EMAIL_TYPE_OTHER.equalsIgnoreCase( strEmailType ) )
+        {
+            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_OTHER_ALERT_MAIL_SENDER;
+            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_OTHER_ALERT_MAIL_SUBJECT;
+            strBodyKey = PARAMETER_OTHER_ALERT_MAIL;
+        }
+        else if ( CONSTANT_EMAIL_TYPE_EXPIRED.equalsIgnoreCase( strEmailType ) )
+        {
+            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_EXPIRED_ALERT_MAIL_SENDER;
+            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_EXPIRED_ALERT_MAIL_SUBJECT;
+            strBodyKey = PARAMETER_EXPIRATION_MAIL;
+        }
+        else if ( CONSTANT_EMAIL_TYPE_REACTIVATED.equalsIgnoreCase( strEmailType ) )
+        {
+            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_REACTIVATED_ALERT_MAIL_SENDER;
+            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_REACTIVATED_ALERT_MAIL_SUBJECT;
+            strBodyKey = PARAMETER_ACCOUNT_REACTIVATED;
+        }
+        else if ( CONSTANT_EMAIL_PASSWORD_EXPIRED.equalsIgnoreCase( strEmailType ) )
+        {
+            strSenderKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_PASSWORD_EXPIRED_MAIL_SENDER;
+            strSubjectKey = CONSTANT_ADVANCED_PARAMS + PARAMETER_PASSWORD_EXPIRED_MAIL_SUBJECT;
+            strBodyKey = PARAMETER_NOTIFY_PASSWORD_EXPIRED;
+        }
 
         AdminUserService.updateSecurityParameter( strSenderKey, request.getParameter( MARK_EMAIL_SENDER ) );
         AdminUserService.updateSecurityParameter( strSubjectKey, request.getParameter( MARK_EMAIL_SUBJECT ) );

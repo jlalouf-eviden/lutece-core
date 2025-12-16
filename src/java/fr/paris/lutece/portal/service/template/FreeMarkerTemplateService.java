@@ -33,7 +33,9 @@
  */
 package fr.paris.lutece.portal.service.template;
 
+import fr.paris.lutece.portal.business.template.AutoImport;
 import fr.paris.lutece.portal.business.template.AutoInclude;
+import fr.paris.lutece.portal.business.template.CommonsImport;
 import fr.paris.lutece.portal.business.template.CommonsInclude;
 import fr.paris.lutece.portal.service.util.AppPathService;
 import fr.paris.lutece.portal.service.util.AppPropertiesService;
@@ -42,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Template service based on the Freemarker template engine
@@ -113,4 +116,31 @@ public class FreeMarkerTemplateService extends AbstractFreeMarkerTemplateService
         return list;
     }
 
+    /**
+     * Load the data of all the autoImport objects and returns them as a list
+     * 
+     * @return the list which contains the data of all the autoImport objects
+     */
+    public List<AutoImport> getAutoImportsMap( )
+    {
+        CommonsImport ciCurrent = CommonsService.getCurrentCommonsImport( );
+        List<AutoImport> list = new ArrayList<>( );
+        
+        Map<String,String> mapAutoImports = getAutoImports ( );
+        
+        for ( String autoImportkey : mapAutoImports.keySet ( ) )
+        {
+            AutoImport autoImport = new AutoImport( autoImportkey, mapAutoImports.get (  autoImportkey ) );
+            for ( String strFileKey : ciCurrent.getMapFiles( ).keySet ( ) )
+            {
+                if ( ciCurrent.getMapFiles( ).get ( strFileKey ).equals( autoImport.getFilePath( ) ) )
+                {
+                    autoImport.setOwner( ciCurrent.getName( ) );
+                }
+            }
+            list.add( autoImport );
+
+        }
+        return list;
+    }
 }
