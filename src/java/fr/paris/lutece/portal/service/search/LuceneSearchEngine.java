@@ -52,6 +52,8 @@ import org.apache.lucene.document.DateTools.Resolution;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.queryparser.classic.QueryParserBase;
@@ -277,7 +279,13 @@ public class LuceneSearchEngine implements SearchEngine
             for ( int i = 0; i < hits.length; i++ )
             {
                 int docId = hits [i].doc;
-                Document document = searcher.doc( docId );
+                //Document document = searcher.doc( docId );
+                List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
+                int subIndex = ReaderUtil.subIndex(docId, leaves);
+                LeafReaderContext ctx = leaves.get(subIndex);
+
+                int segmentDocId = docId - ctx.docBase;
+                Document document = ctx.reader().storedFields().document(segmentDocId);
                 SearchItem si = new SearchItem( document );
 
                 if ( ( !bFilterResult ) || ( si.getRole( ).equals( Page.ROLE_NONE ) )
